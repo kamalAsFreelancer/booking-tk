@@ -10,16 +10,24 @@ class Database {
 
     private function connect() {
         try {
-            $this->conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
+            $connectionString = sprintf(
+                "host=%s port=%s dbname=%s user=%s password=%s",
+                DB_HOST,
+                DB_PORT,
+                DB_NAME,
+                DB_USER,
+                DB_PASS
+            );
 
-            if ($this->conn->connect_error) {
-                throw new Exception("Connection failed: " . $this->conn->connect_error);
+            $this->conn = pg_connect($connectionString);
+
+            if (!$this->conn) {
+                throw new Exception("Database connection failed: " . pg_last_error());
             }
 
-            $this->conn->set_charset("utf8mb4");
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(['error' => 'Database connection failed']);
+            echo json_encode(['error' => $e->getMessage()]);
             exit();
         }
     }
@@ -30,11 +38,12 @@ class Database {
 
     public function close() {
         if ($this->conn) {
-            $this->conn->close();
+            pg_close($this->conn);
         }
     }
 }
 
+// Response helper functions
 function sendResponse($data, $statusCode = 200) {
     http_response_code($statusCode);
     echo json_encode($data);
