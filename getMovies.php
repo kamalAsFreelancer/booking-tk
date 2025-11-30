@@ -1,23 +1,32 @@
 <?php
-header('Content-Type: application/json; charset=utf-8');
-require_once 'db.php';
+require_once 'Database.php';
 
+// Create database connection
 $db = new Database();
 $conn = $db->getConnection();
 
-$sql = "SELECT * FROM movies ORDER BY created_at DESC";
-$result = $conn->query($sql);
+// Fetch movies from PostgreSQL
+$query = "SELECT id, title, description, poster, duration, language, genre, price FROM movies ORDER BY id DESC";
+$result = pg_query($conn, $query);
 
-if ($result) {
-    $movies = [];
-    while ($row = $result->fetch_assoc()) {
-        $movies[] = $row;
-    }
-    sendResponse(['movies' => $movies]);
-} else {
-    sendError('Failed to fetch movies', 500);
-    exit();
+if (!$result) {
+    sendError("Failed to fetch movies: " . pg_last_error($conn), 500);
 }
 
+$movies = [];
+while ($row = pg_fetch_assoc($result)) {
+    $movies[] = [
+        'id' => (int)$row['id'],
+        'title' => $row['title'],
+        'description' => $row['description'],
+        'poster' => $row['poster'],
+        'duration' => (int)$row['duration'],
+        'language' => $row['language'],
+        'genre' => $row['genre'],
+        'price' => isset($row['price']) ? (float)$row['price'] : null
+    ];
+}
+
+sendResponse(['movies' => $movies]);
 $db->close();
 ?>
